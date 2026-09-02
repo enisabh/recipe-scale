@@ -9,6 +9,8 @@ Kalkulator sukatan resipi responsif untuk menyesuaikan bahan secara automatik me
 ## Fungsi utama
 
 - Tampal resipi dalam Bahasa Melayu atau Inggeris.
+- Cari dan pilih daripada 20 resipi Khairul Aming yang dirujuk daripada ResipiKita.
+- Isi bahan serta jumlah hidangan asal ke kalkulator dengan satu klik.
 - Skala sukatan untuk 1 hingga 500 orang.
 - Fahami nombor perpuluhan, pecahan biasa dan pecahan Unicode.
 - Tukar gram kepada kilogram serta mililiter kepada liter apabila sesuai.
@@ -53,6 +55,7 @@ app/page.tsx          Antaramuka dan interaksi utama
 app/globals.css       Tema, responsif dan gaya cetakan
 lib/recipe.ts         Parser serta enjin penskalaan
 lib/recipe.test.ts    Ujian automatik pengiraan
+lib/khairul-aming-recipes.json  Data 20 preset resipi bersumber
 public/og.png         Kad pratonton sosial
 ```
 

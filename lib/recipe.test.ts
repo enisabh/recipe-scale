@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import test from 'node:test';
 import { formatRecipeForCopy, normalizeRecipeText, scaleRecipe } from './recipe.ts';
 
@@ -45,4 +46,27 @@ void test('detects ingredients pasted from Google without line breaks', () => {
     { name: 'Serbuk Lada Hitam', displayAmount: '2 sudu besar' },
     { name: 'Minyak Masak Atau Marjerin Cair', displayAmount: '2 sudu besar' },
   ]);
+});
+
+void test('keeps ingredient ranges and ingredients without exact quantities', () => {
+  const recipe = scaleRecipe('Ayam Pop\n2–3 sudu santan\n½ kotak kecil santan\nGaram secukup rasa\nAyam', 4, 8);
+  assert.deepEqual(recipe.items, [
+    { name: 'Santan', displayAmount: '4–6 sudu' },
+    { name: 'Santan', displayAmount: '1 kotak kecil' },
+    { name: 'Garam', displayAmount: 'Secukup rasa' },
+    { name: 'Ayam', displayAmount: 'Ikut keperluan' },
+  ]);
+});
+
+void test('includes 20 sourced Khairul Aming recipe presets', () => {
+  const recipes = JSON.parse(
+    readFileSync(new URL('./khairul-aming-recipes.json', import.meta.url), 'utf8'),
+  ) as Array<{ name: string; servings: number; ingredients: string[]; sourceUrl: string }>;
+  assert.equal(recipes.length, 20);
+  assert.ok(recipes.every((recipe) => recipe.ingredients.length >= 3));
+  assert.ok(recipes.every((recipe) => recipe.sourceUrl.startsWith('https://www.resipikita.com/resipi/')));
+  recipes.forEach((recipe) => {
+    const parsed = scaleRecipe([recipe.name, ...recipe.ingredients].join('\n'), recipe.servings, recipe.servings);
+    assert.equal(parsed.items.length, recipe.ingredients.length, recipe.name);
+  });
 });

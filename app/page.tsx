@@ -6,13 +6,17 @@ import {
   Check,
   ChefHat,
   CircleHelp,
+  Clock3,
   Clipboard,
   Copy,
+  ExternalLink,
   Minus,
   Plus,
   Printer,
   RotateCcw,
+  Search,
   Sparkles,
+  Users,
 } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
@@ -26,7 +30,10 @@ import {
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
+import khairulAmingRecipes from '@/lib/khairul-aming-recipes.json';
 import { formatRecipeForCopy, normalizeRecipeText, scaleRecipe } from '@/lib/recipe';
+
+type RecipePreset = (typeof khairulAmingRecipes)[number];
 
 const DEFAULT_RECIPE = `Nasi Goreng Kampung
 
@@ -42,6 +49,18 @@ const ingredientEmoji: Record<string, string> = {
   nasi: '🍚', ayam: '🍗', telur: '🥚', kicap: '🫙', putih: '🧄',
   bawang: '🧅', garam: '🧂', gula: '🍬', air: '💧', minyak: '🫗', tepung: '🌾',
 };
+
+const categoryEmoji: Record<string, string> = {
+  Ayam: '🍗', Daging: '🥩', Ikan: '🐟', Seafood: '🦐',
+  'Nasi, Pulut & Bubur': '🍚', 'Pasta & Pizza': '🍝',
+  'Pencuci Mulut': '🍮', Snack: '🥨',
+  'Sambal, Sos & Pencicah': '🌶️', Sup: '🍲',
+};
+
+const recipeCategories = [
+  'Semua',
+  ...Array.from(new Set(khairulAmingRecipes.map((recipe) => recipe.category))),
+];
 
 function getEmoji(name: string) {
   const match = Object.keys(ingredientEmoji).find((keyword) =>
@@ -65,11 +84,25 @@ export default function Home() {
   const [targetServings, setTargetServings] = useState(100);
   const [toast, setToast] = useState('');
   const [pulse, setPulse] = useState(false);
+  const [recipeSearch, setRecipeSearch] = useState('');
+  const [recipeCategory, setRecipeCategory] = useState('Semua');
+  const [selectedRecipeId, setSelectedRecipeId] = useState<number | null>(null);
 
   const scaledRecipe = useMemo(
     () => scaleRecipe(recipeText, originalServings, targetServings),
     [recipeText, originalServings, targetServings],
   );
+
+  const filteredRecipes = useMemo(() => {
+    const query = recipeSearch.trim().toLowerCase();
+    return khairulAmingRecipes.filter((recipe) => {
+      const matchesCategory = recipeCategory === 'Semua' || recipe.category === recipeCategory;
+      const matchesSearch = !query
+        || recipe.name.toLowerCase().includes(query)
+        || recipe.ingredients.some((ingredient) => ingredient.toLowerCase().includes(query));
+      return matchesCategory && matchesSearch;
+    });
+  }, [recipeCategory, recipeSearch]);
 
   const showToast = (message: string) => {
     setToast(message);
@@ -116,7 +149,20 @@ export default function Home() {
     setRecipeText(DEFAULT_RECIPE);
     setOriginalServings(3);
     setTargetServings(100);
+    setSelectedRecipeId(null);
     showToast('Resipi telah ditetapkan semula');
+  };
+
+  const loadRecipePreset = (recipe: RecipePreset) => {
+    setRecipeText([recipe.name, '', ...recipe.ingredients].join('\n'));
+    setOriginalServings(recipe.servings);
+    setSelectedRecipeId(recipe.id);
+    setPulse(true);
+    window.setTimeout(() => setPulse(false), 500);
+    showToast(`${recipe.name} dimasukkan ke kalkulator`);
+    window.setTimeout(() => {
+      document.getElementById('kalkulator-resipi')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }, 50);
   };
 
   return (
@@ -128,7 +174,7 @@ export default function Home() {
           <p>Tampal resipi, pilih jumlah tetamu dan biar kami kira selebihnya.</p>
         </div>
 
-        <section className="recipe-shell" aria-label="Kalkulator skala resipi">
+        <section id="kalkulator-resipi" className="recipe-shell" aria-label="Kalkulator skala resipi">
           <header className="app-header">
             <div className="brand-lockup">
               <span className="brand-icon" aria-hidden="true"><ChefHat /></span>
@@ -228,6 +274,83 @@ export default function Home() {
               </div>
             </section>
           </div>
+        </section>
+
+        <section className="recipe-library" aria-labelledby="koleksi-resipi-title">
+          <div className="library-heading">
+            <div>
+              <span className="library-kicker">20 RESIPI PILIHAN</span>
+              <h2 id="koleksi-resipi-title">Koleksi Resipi Khairul Aming</h2>
+              <p>Cari resipi, pilih satu dan bahan akan terus masuk ke kalkulator dengan hidangan asal.</p>
+            </div>
+            <span className="library-count">{filteredRecipes.length} resipi</span>
+          </div>
+
+          <div className="library-tools">
+            <div className="library-search">
+              <Search aria-hidden="true" />
+              <label className="sr-only" htmlFor="recipe-library-search">Cari resipi atau bahan</label>
+              <Input
+                id="recipe-library-search"
+                value={recipeSearch}
+                onChange={(event) => setRecipeSearch(event.target.value)}
+                placeholder="Cari ayam, ikan, sambal..."
+              />
+            </div>
+            <div className="category-filters" aria-label="Tapis kategori resipi">
+              {recipeCategories.map((category) => (
+                <button
+                  key={category}
+                  type="button"
+                  className={recipeCategory === category ? 'active' : ''}
+                  onClick={() => setRecipeCategory(category)}
+                >
+                  {category}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {filteredRecipes.length > 0 ? (
+            <div className="recipe-card-grid">
+              {filteredRecipes.map((recipe) => (
+                <article
+                  key={recipe.id}
+                  className={`recipe-preset-card ${selectedRecipeId === recipe.id ? 'selected' : ''}`}
+                >
+                  <div className="recipe-card-topline">
+                    <span className="recipe-category-icon" aria-hidden="true">
+                      {categoryEmoji[recipe.category] ?? '🍽️'}
+                    </span>
+                    <span className="recipe-category">{recipe.category}</span>
+                    {selectedRecipeId === recipe.id && <span className="selected-label">Dipilih</span>}
+                  </div>
+                  <h3>{recipe.name}</h3>
+                  <div className="recipe-meta">
+                    <span><Users aria-hidden="true" /> {recipe.servings} orang</span>
+                    {recipe.minutes && <span><Clock3 aria-hidden="true" /> {recipe.minutes} min</span>}
+                    <span>{recipe.ingredients.length} bahan</span>
+                  </div>
+                  <p>{recipe.ingredients.slice(0, 3).join(' • ')}</p>
+                  <div className="recipe-card-actions">
+                    <Button type="button" onClick={() => loadRecipePreset(recipe)}>Guna resipi</Button>
+                    <a href={recipe.sourceUrl} target="_blank" rel="noreferrer">
+                      Sumber <ExternalLink aria-hidden="true" />
+                    </a>
+                  </div>
+                </article>
+              ))}
+            </div>
+          ) : (
+            <div className="library-empty">
+              <Search aria-hidden="true" />
+              <p>Tiada resipi sepadan. Cuba nama bahan atau kategori lain.</p>
+            </div>
+          )}
+
+          <p className="library-source-note">
+            Data bahan dan hidangan dirujuk daripada ResipiKita. Gunakan pautan sumber pada setiap kad untuk cara memasak asal. Cal-Cook-Lator bukan laman rasmi atau berafiliasi dengan Khairul Aming.
+          </p>
         </section>
 
         <footer className="site-footer"><span>Cal-Cook-Lator</span><p>Sukatan yang lebih mudah. Majlis yang lebih tenang.</p></footer>

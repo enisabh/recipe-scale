@@ -7,13 +7,15 @@ export type ScaledRecipe = {
   items: ScaledIngredient[];
 };
 
-const COUNT_UNITS = new Set(['biji', 'ulas', 'batang', 'keping', 'helai', 'ekor', 'bungkus']);
+const COUNT_UNITS = new Set(['biji', 'ulas', 'batang', 'keping', 'helai', 'ekor', 'tangkai', 'ketul', 'kiub', 'akar', 'penutup', 'blok']);
 const UNIT_ALIASES: Record<string, string> = {
   g: 'g', gram: 'g', grams: 'g', kg: 'kg', kilogram: 'kg',
   ml: 'ml', mililiter: 'ml', l: 'L', liter: 'L', litre: 'L',
   cawan: 'cawan', cup: 'cawan', cups: 'cawan', sudu: 'sudu',
   tbsp: 'sudu besar', tsp: 'sudu kecil', biji: 'biji', ulas: 'ulas',
   batang: 'batang', keping: 'keping', helai: 'helai', ekor: 'ekor', bungkus: 'bungkus',
+  kotak: 'kotak', tin: 'tin', tangkai: 'tangkai', ketul: 'ketul', paket: 'paket',
+  kiub: 'kiub', akar: 'akar', penutup: 'penutup', blok: 'blok', inci: 'inci', cm: 'cm', mm: 'mm',
 };
 const FRACTIONS: Record<string, number> = {
   '¼': 0.25, '½': 0.5, '¾': 0.75, '⅓': 1 / 3, '⅔': 2 / 3,
@@ -28,15 +30,34 @@ const QUANTITY_PATTERN = String.raw`(?:\d+\s+\d+\/\d+|\d+\/\d+|\d+(?:[.,]\d+)?|[
 const UNIT_PATTERN = COLLAPSED_UNITS
   .map((unit) => unit.replace(/\s+/g, String.raw`\s+`))
   .join('|');
-const COLLAPSED_INGREDIENT_BOUNDARY = new RegExp(
-  String.raw`([^\s\d.,/¼½¾⅓⅔⅛⅜⅝⅞])(?=${QUANTITY_PATTERN}\s*(?:${UNIT_PATTERN})\b)`,
-  'giu',
+const COLLAPSED_INGREDIENT_START = new RegExp(
+  String.raw`^${QUANTITY_PATTERN}\s*(?:${UNIT_PATTERN})\b`,
+  'iu',
 );
+const COLLAPSED_BOUNDARY_PRECEDER = /[^\s\d.,/¼½¾⅓⅔⅛⅜⅝⅞–-]/u;
 
 export function normalizeRecipeText(text: string) {
-  return text
-    .replace(/\u00a0/g, ' ')
-    .replace(COLLAPSED_INGREDIENT_BOUNDARY, '$1\n');
+  const normalized = text.replace(/\u00a0/g, ' ');
+  let output = '';
+  let parenthesisDepth = 0;
+
+  for (let index = 0; index < normalized.length; index += 1) {
+    const character = normalized[index];
+    const previous = normalized[index - 1] ?? '';
+    if (
+      parenthesisDepth === 0
+      && index > 0
+      && COLLAPSED_BOUNDARY_PRECEDER.test(previous)
+      && COLLAPSED_INGREDIENT_START.test(normalized.slice(index))
+    ) {
+      output += '\n';
+    }
+    output += character;
+    if (character === '(') parenthesisDepth += 1;
+    if (character === ')') parenthesisDepth = Math.max(0, parenthesisDepth - 1);
+  }
+
+  return output;
 }
 
 function parseNumber(value: string): number {
@@ -59,11 +80,20 @@ function titleCase(value: string) {
 }
 
 function cleanUnit(unit: string, remainder: string) {
-  let canonical = UNIT_ALIASES[unit.toLowerCase()] ?? unit.toLowerCase();
+  const normalizedUnit = unit.toLowerCase();
+  if (unit && !UNIT_ALIASES[normalizedUnit]) {
+    return { unit: '', name: `${unit} ${remainder}`.trim() };
+  }
+  let canonical = UNIT_ALIASES[normalizedUnit] ?? normalizedUnit;
   let name = remainder.trim();
   if (canonical === 'sudu' && /^(besar|kecil)\b/i.test(name)) {
     const size = name.match(/^(besar|kecil)\b/i)?.[1].toLowerCase();
     canonical = `sudu ${size}`;
+    name = name.replace(/^(besar|kecil)\b\s*/i, '');
+  }
+  if (/^(kotak|tin|bungkus|paket)$/.test(canonical) && /^(besar|kecil)\b/i.test(name)) {
+    const size = name.match(/^(besar|kecil)\b/i)?.[1].toLowerCase();
+    canonical = `${canonical} ${size}`;
     name = name.replace(/^(besar|kecil)\b\s*/i, '');
   }
   return { unit: canonical, name };
@@ -93,6 +123,16 @@ function formatAmount(quantity: number, unit: string) {
   return `${formatNumber(scaledQuantity, COUNT_UNITS.has(displayUnit))} ${displayUnit}`.trim();
 }
 
+function formatRange(minimum: number, maximum: number, unit: string) {
+  const first = formatAmount(minimum, unit);
+  const second = formatAmount(maximum, unit);
+  const suffix = ` ${unit}`;
+  if (unit && first.endsWith(suffix) && second.endsWith(suffix)) {
+    return `${first.slice(0, -suffix.length)}–${second.slice(0, -suffix.length)}${suffix}`;
+  }
+  return `${first}–${second}`;
+}
+
 export function scaleRecipe(text: string, originalServings: number, targetServings: number): ScaledRecipe {
   const safeOriginal = Math.max(1, originalServings || 1);
   const safeTarget = Math.max(1, targetServings || 1);
@@ -102,6 +142,16 @@ export function scaleRecipe(text: string, originalServings: number, targetServin
   const items: ScaledIngredient[] = [];
 
   lines.forEach((line, index) => {
+    const rangeMatch = line.match(
+      /^[-•]?\s*(\d+(?:[.,]\d+)?)\s*[–-]\s*(\d+(?:[.,]\d+)?)\s*([a-zA-Z]+)?\s*(.*)$/u,
+    );
+    if (rangeMatch) {
+      const minimum = parseNumber(rangeMatch[1]) * factor;
+      const maximum = parseNumber(rangeMatch[2]) * factor;
+      const { unit, name } = cleanUnit(rangeMatch[3] || '', rangeMatch[4] || '');
+      if (name) items.push({ name: titleCase(name), displayAmount: formatRange(minimum, maximum, unit) });
+      return;
+    }
     const numericMatch = line.match(
       /^[-•]?\s*(\d+\s+\d+\/\d+|\d+\/\d+|\d+(?:[.,]\d+)?|[¼½¾⅓⅔⅛⅜⅝⅞])\s*([a-zA-Z]+)?\s*(.*)$/u,
     );
@@ -116,7 +166,16 @@ export function scaleRecipe(text: string, originalServings: number, targetServin
       items.push({ name: titleCase(qualitativeMatch[2]), displayAmount: 'Secukup rasa' });
       return;
     }
-    if (index === 0 || title === 'Resipi Anda') title = titleCase(line);
+    const qualitativeSuffixMatch = line.match(/^(.+?)\s+(secukup rasa|secukupnya)$/i);
+    if (qualitativeSuffixMatch) {
+      items.push({ name: titleCase(qualitativeSuffixMatch[1]), displayAmount: 'Secukup rasa' });
+      return;
+    }
+    if (index === 0 || title === 'Resipi Anda') {
+      title = titleCase(line);
+      return;
+    }
+    items.push({ name: titleCase(line), displayAmount: 'Ikut keperluan' });
   });
 
   return { title, factor, factorLabel: `${formatNumber(factor)}×`, servings: safeTarget, items };

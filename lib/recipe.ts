@@ -20,6 +20,25 @@ const FRACTIONS: Record<string, number> = {
   '⅛': 0.125, '⅜': 0.375, '⅝': 0.625, '⅞': 0.875,
 };
 
+const COLLAPSED_UNITS = [
+  ...Object.keys(UNIT_ALIASES),
+  'sudu besar', 'sudu kecil', 'inci', 'cm', 'mm',
+].sort((a, b) => b.length - a.length);
+const QUANTITY_PATTERN = String.raw`(?:\d+\s+\d+\/\d+|\d+\/\d+|\d+(?:[.,]\d+)?|[¼½¾⅓⅔⅛⅜⅝⅞])`;
+const UNIT_PATTERN = COLLAPSED_UNITS
+  .map((unit) => unit.replace(/\s+/g, String.raw`\s+`))
+  .join('|');
+const COLLAPSED_INGREDIENT_BOUNDARY = new RegExp(
+  String.raw`([^\s\d.,/¼½¾⅓⅔⅛⅜⅝⅞])(?=${QUANTITY_PATTERN}\s*(?:${UNIT_PATTERN})\b)`,
+  'giu',
+);
+
+export function normalizeRecipeText(text: string) {
+  return text
+    .replace(/\u00a0/g, ' ')
+    .replace(COLLAPSED_INGREDIENT_BOUNDARY, '$1\n');
+}
+
 function parseNumber(value: string): number {
   const normalized = value.trim().replace(',', '.');
   if (FRACTIONS[normalized] !== undefined) return FRACTIONS[normalized];
@@ -78,7 +97,7 @@ export function scaleRecipe(text: string, originalServings: number, targetServin
   const safeOriginal = Math.max(1, originalServings || 1);
   const safeTarget = Math.max(1, targetServings || 1);
   const factor = safeTarget / safeOriginal;
-  const lines = text.split(/\r?\n/).map((line) => line.trim()).filter(Boolean);
+  const lines = normalizeRecipeText(text).split(/\r?\n/).map((line) => line.trim()).filter(Boolean);
   let title = 'Resipi Anda';
   const items: ScaledIngredient[] = [];
 

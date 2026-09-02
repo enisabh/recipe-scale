@@ -26,7 +26,7 @@ import {
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { formatRecipeForCopy, scaleRecipe } from '@/lib/recipe';
+import { formatRecipeForCopy, normalizeRecipeText, scaleRecipe } from '@/lib/recipe';
 
 const DEFAULT_RECIPE = `Nasi Goreng Kampung
 
@@ -84,6 +84,23 @@ export default function Home() {
     setPulse(true);
     window.setTimeout(() => setPulse(false), 500);
     document.getElementById('hasil-resipi')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  };
+
+  const handleRecipePaste = (event: React.ClipboardEvent<HTMLTextAreaElement>) => {
+    const pastedText = event.clipboardData.getData('text');
+    const normalizedText = normalizeRecipeText(pastedText);
+    if (normalizedText === pastedText) return;
+
+    event.preventDefault();
+    const input = event.currentTarget;
+    const selectionStart = input.selectionStart;
+    const selectionEnd = input.selectionEnd;
+    const nextText = `${recipeText.slice(0, selectionStart)}${normalizedText}${recipeText.slice(selectionEnd)}`;
+    const nextCursor = selectionStart + normalizedText.length;
+
+    setRecipeText(nextText);
+    showToast('Bahan tanpa baris telah dikesan secara automatik');
+    window.requestAnimationFrame(() => input.setSelectionRange(nextCursor, nextCursor));
   };
 
   const handleCopy = async () => {
@@ -150,7 +167,7 @@ export default function Home() {
               <label className="sr-only" htmlFor="recipe-input">Teks resipi</label>
               <div className="textarea-wrap">
                 <Clipboard className="input-corner-icon" aria-hidden="true" />
-                <Textarea id="recipe-input" value={recipeText} onChange={(e) => setRecipeText(e.target.value)} className="recipe-textarea" spellCheck="false" />
+                <Textarea id="recipe-input" value={recipeText} onChange={(e) => setRecipeText(e.target.value)} onPaste={handleRecipePaste} className="recipe-textarea" spellCheck="false" />
               </div>
               <div className="serving-row">
                 <label htmlFor="original-servings">Resipi ini untuk</label>

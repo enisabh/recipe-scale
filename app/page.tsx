@@ -133,7 +133,7 @@ export default function Home() {
             <div className="brand-lockup">
               <span className="brand-icon" aria-hidden="true"><ChefHat /></span>
               <div>
-                <p className="brand-name">RECIPE SCALE</p>
+                <p className="brand-name">CAL-COOK-LATOR</p>
                 <p className="brand-tagline">Resipi tepat, untuk setiap majlis.</p>
               </div>
             </div>
@@ -144,7 +144,7 @@ export default function Home() {
                 </DialogTrigger>
                 <DialogContent className="help-dialog">
                   <DialogHeader>
-                    <DialogTitle>Cara menggunakan Recipe Scale</DialogTitle>
+                    <DialogTitle>Cara menggunakan Cal-Cook-Lator</DialogTitle>
                     <DialogDescription>Tiga langkah ringkas untuk mendapatkan sukatan baharu.</DialogDescription>
                   </DialogHeader>
                   <ol className="help-list">
@@ -230,7 +230,7 @@ export default function Home() {
           </div>
         </section>
 
-        <footer className="site-footer"><span>Recipe Scale</span><p>Sukatan yang lebih mudah. Majlis yang lebih tenang.</p></footer>
+        <footer className="site-footer"><span>Cal-Cook-Lator</span><p>Sukatan yang lebih mudah. Majlis yang lebih tenang.</p></footer>
       </div>
 
       {toast && <output className="toast"><Check /> {toast}</output>}

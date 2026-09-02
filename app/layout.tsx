@@ -7,18 +7,18 @@ const geistMono = Geist_Mono({ variable: '--font-geist-mono', subsets: ['latin']
 
 export const metadata: Metadata = {
   metadataBase: new URL('https://enisabh.github.io/recipe-scale/'),
-  title: 'Recipe Scale — Kalkulator Sukatan Resipi',
+  title: 'Cal-Cook-Lator — Kalkulator Sukatan Resipi',
   description: 'Tampal resipi dan ubah sukatan bahan secara automatik untuk 1 hingga 500 orang.',
   openGraph: {
-    title: 'Recipe Scale — Kalkulator Sukatan Resipi',
+    title: 'Cal-Cook-Lator — Kalkulator Sukatan Resipi',
     description: 'Tampal resipi, pilih jumlah tetamu dan dapatkan sukatan baharu serta-merta.',
-    images: [{ url: '/og.png', width: 1200, height: 630, alt: 'Recipe Scale — Tampal, Skala, Siap' }],
+    images: [{ url: '/recipe-scale/og.png', width: 1200, height: 630, alt: 'Cal-Cook-Lator — Tampal, Skala, Siap' }],
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'Recipe Scale — Kalkulator Sukatan Resipi',
+    title: 'Cal-Cook-Lator — Kalkulator Sukatan Resipi',
     description: 'Tampal resipi, pilih jumlah tetamu dan dapatkan sukatan baharu serta-merta.',
-    images: ['/og.png'],
+    images: ['/recipe-scale/og.png'],
   },
 };
 

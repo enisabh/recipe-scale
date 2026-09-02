@@ -1,6 +1,6 @@
-# Recipe Scale
+# Cal-Cook-Lator
 
-![Recipe Scale](public/og.png)
+![Cal-Cook-Lator](public/og.png)
 
 Kalkulator sukatan resipi responsif untuk menyesuaikan bahan secara automatik mengikut jumlah tetamu.
 

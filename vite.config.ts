@@ -42,9 +42,10 @@ export default defineConfig(async () => {
   process.env.MINIFLARE_REGISTRY_PATH ??= '.wrangler/registry';
 
   const isQaPreview = process.env.RECIPE_SCALE_QA === '1';
+  const isGitHubPages = process.env.GITHUB_PAGES === '1';
 
   // Wrangler snapshots its log path while the Cloudflare plugin is imported.
-  const cloudflarePlugin = isQaPreview
+  const cloudflarePlugin = isQaPreview || isGitHubPages
     ? null
     : (await import('@cloudflare/vite-plugin')).cloudflare({
         viteEnvironment: { name: 'rsc', childEnvironments: ['ssr'] },
@@ -56,6 +57,6 @@ export default defineConfig(async () => {
     server: isCodexSeatbeltSandbox
       ? { watch: { useFsEvents: false, usePolling: true } }
       : undefined,
-    plugins: [vinext(), sites(), cloudflarePlugin].filter(Boolean),
+    plugins: [vinext(), isGitHubPages ? null : sites(), cloudflarePlugin].filter(Boolean),
   };
 });

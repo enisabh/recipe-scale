@@ -4,7 +4,7 @@
 
 Kalkulator sukatan resipi responsif untuk menyesuaikan bahan secara automatik mengikut jumlah tetamu.
 
-**Production:** [recipe-scale-enisabh.enisabh17.chatgpt.site](https://recipe-scale-enisabh.enisabh17.chatgpt.site)
+**Production:** [enisabh.github.io/recipe-scale](https://enisabh.github.io/recipe-scale/)
 
 ## Fungsi utama
 

@@ -6,6 +6,7 @@ const geistSans = Geist({ variable: '--font-geist-sans', subsets: ['latin'] });
 const geistMono = Geist_Mono({ variable: '--font-geist-mono', subsets: ['latin'] });
 
 export const metadata: Metadata = {
+  metadataBase: new URL('https://recipe-scale-enisabh.enisabh17.chatgpt.site'),
   title: 'Recipe Scale — Kalkulator Sukatan Resipi',
   description: 'Tampal resipi dan ubah sukatan bahan secara automatik untuk 1 hingga 500 orang.',
   openGraph: {

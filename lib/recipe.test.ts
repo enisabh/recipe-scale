@@ -49,10 +49,11 @@ void test('detects ingredients pasted from Google without line breaks', () => {
 });
 
 void test('keeps ingredient ranges and ingredients without exact quantities', () => {
-  const recipe = scaleRecipe('Ayam Pop\n2–3 sudu santan\n½ kotak kecil santan\nGaram secukup rasa\nAyam', 4, 8);
+  const recipe = scaleRecipe('Ayam Pop\n2–3 sudu santan\n½ kotak kecil santan\n3 ketul kecil gula Melaka\nGaram secukup rasa\nAyam', 4, 8);
   assert.deepEqual(recipe.items, [
     { name: 'Santan', displayAmount: '4–6 sudu' },
     { name: 'Santan', displayAmount: '1 kotak kecil' },
+    { name: 'Gula Melaka', displayAmount: '6 ketul kecil' },
     { name: 'Garam', displayAmount: 'Secukup rasa' },
     { name: 'Ayam', displayAmount: 'Ikut keperluan' },
   ]);

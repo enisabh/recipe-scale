@@ -8,6 +8,7 @@ export type ScaledRecipe = {
 };
 
 const COUNT_UNITS = new Set(['biji', 'ulas', 'batang', 'keping', 'helai', 'ekor', 'tangkai', 'ketul', 'kiub', 'akar', 'penutup', 'blok']);
+const SIZED_UNITS = new Set([...COUNT_UNITS, 'kotak', 'tin', 'bungkus', 'paket']);
 const UNIT_ALIASES: Record<string, string> = {
   g: 'g', gram: 'g', grams: 'g', kg: 'kg', kilogram: 'kg',
   ml: 'ml', mililiter: 'ml', l: 'L', liter: 'L', litre: 'L',
@@ -91,7 +92,7 @@ function cleanUnit(unit: string, remainder: string) {
     canonical = `sudu ${size}`;
     name = name.replace(/^(besar|kecil)\b\s*/i, '');
   }
-  if (/^(kotak|tin|bungkus|paket)$/.test(canonical) && /^(besar|kecil)\b/i.test(name)) {
+  if (SIZED_UNITS.has(canonical) && /^(besar|kecil)\b/i.test(name)) {
     const size = name.match(/^(besar|kecil)\b/i)?.[1].toLowerCase();
     canonical = `${canonical} ${size}`;
     name = name.replace(/^(besar|kecil)\b\s*/i, '');
@@ -120,7 +121,7 @@ function formatAmount(quantity: number, unit: string) {
   } else if (unit === 'L' && quantity < 1) {
     scaledQuantity = quantity * 1000; displayUnit = 'ml';
   }
-  return `${formatNumber(scaledQuantity, COUNT_UNITS.has(displayUnit))} ${displayUnit}`.trim();
+  return `${formatNumber(scaledQuantity, COUNT_UNITS.has(displayUnit.split(' ')[0]))} ${displayUnit}`.trim();
 }
 
 function formatRange(minimum: number, maximum: number, unit: string) {

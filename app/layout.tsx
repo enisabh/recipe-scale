@@ -12,13 +12,13 @@ export const metadata: Metadata = {
   openGraph: {
     title: 'Cal-Cook-Lator — Kalkulator Sukatan Resipi',
     description: 'Tampal resipi, pilih jumlah tetamu dan dapatkan sukatan baharu serta-merta.',
-    images: [{ url: '/recipe-scale/og.png', width: 1200, height: 630, alt: 'Cal-Cook-Lator — Tampal, Skala, Siap' }],
+    images: [{ url: '/og.png', width: 1200, height: 630, alt: 'Cal-Cook-Lator — Tampal, Skala, Siap' }],
   },
   twitter: {
     card: 'summary_large_image',
     title: 'Cal-Cook-Lator — Kalkulator Sukatan Resipi',
     description: 'Tampal resipi, pilih jumlah tetamu dan dapatkan sukatan baharu serta-merta.',
-    images: ['/recipe-scale/og.png'],
+    images: ['/og.png'],
   },
 };
 

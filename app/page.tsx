@@ -3,6 +3,7 @@
 import { useMemo, useState } from 'react';
 import {
   ArrowRight,
+  BookOpen,
   Check,
   ChefHat,
   CircleHelp,
@@ -87,6 +88,7 @@ export default function Home() {
   const [recipeSearch, setRecipeSearch] = useState('');
   const [recipeCategory, setRecipeCategory] = useState('Semua');
   const [selectedRecipeId, setSelectedRecipeId] = useState<number | null>(null);
+  const [activeMethodRecipe, setActiveMethodRecipe] = useState<RecipePreset | null>(null);
 
   const scaledRecipe = useMemo(
     () => scaleRecipe(recipeText, originalServings, targetServings),
@@ -157,6 +159,7 @@ export default function Home() {
     setRecipeText([recipe.name, '', ...recipe.ingredients].join('\n'));
     setOriginalServings(recipe.servings);
     setSelectedRecipeId(recipe.id);
+    setActiveMethodRecipe(null);
     setPulse(true);
     window.setTimeout(() => setPulse(false), 500);
     showToast(`${recipe.name} dimasukkan ke kalkulator`);
@@ -334,6 +337,14 @@ export default function Home() {
                   <p>{recipe.ingredients.slice(0, 3).join(' • ')}</p>
                   <div className="recipe-card-actions">
                     <Button type="button" onClick={() => loadRecipePreset(recipe)}>Guna resipi</Button>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      className="method-button"
+                      onClick={() => setActiveMethodRecipe(recipe)}
+                    >
+                      <BookOpen aria-hidden="true" /> Cara masak
+                    </Button>
                     <a href={recipe.sourceUrl} target="_blank" rel="noreferrer">
                       Sumber <ExternalLink aria-hidden="true" />
                     </a>
@@ -349,9 +360,57 @@ export default function Home() {
           )}
 
           <p className="library-source-note">
-            Data bahan dan hidangan dirujuk daripada ResipiKita. Gunakan pautan sumber pada setiap kad untuk cara memasak asal. Cal-Cook-Lator bukan laman rasmi atau berafiliasi dengan Khairul Aming.
+            Data bahan, hidangan dan ringkasan cara memasak dirujuk daripada ResipiKita. Gunakan pautan sumber pada setiap kad untuk melihat penerbitan asal. Cal-Cook-Lator bukan laman rasmi atau berafiliasi dengan Khairul Aming.
           </p>
         </section>
+
+        <Dialog open={Boolean(activeMethodRecipe)} onOpenChange={(open) => { if (!open) setActiveMethodRecipe(null); }}>
+          {activeMethodRecipe && (
+            <DialogContent className="recipe-method-dialog">
+              <DialogHeader className="method-dialog-header">
+                <div className="method-dialog-category">
+                  <span aria-hidden="true">{categoryEmoji[activeMethodRecipe.category] ?? '🍽️'}</span>
+                  {activeMethodRecipe.category}
+                </div>
+                <DialogTitle>{activeMethodRecipe.name}</DialogTitle>
+                <DialogDescription>Ringkasan langkah memasak yang mudah diikuti, dengan pautan ke sumber asal.</DialogDescription>
+                <div className="method-dialog-meta">
+                  <span><Users aria-hidden="true" /> {activeMethodRecipe.servings} orang</span>
+                  {activeMethodRecipe.minutes && <span><Clock3 aria-hidden="true" /> {activeMethodRecipe.minutes} minit</span>}
+                  <span>{activeMethodRecipe.ingredients.length} bahan</span>
+                  <span>{activeMethodRecipe.steps.length} langkah</span>
+                </div>
+              </DialogHeader>
+
+              <div className="method-dialog-body">
+                <section className="method-ingredients" aria-labelledby="method-ingredients-title">
+                  <h3 id="method-ingredients-title">Bahan-bahan</h3>
+                  <ul>
+                    {activeMethodRecipe.ingredients.map((ingredient, index) => (
+                      <li key={`${ingredient}-${index}`}><span aria-hidden="true">{index + 1}</span><p>{ingredient}</p></li>
+                    ))}
+                  </ul>
+                </section>
+
+                <section className="method-steps" aria-labelledby="method-steps-title">
+                  <h3 id="method-steps-title">Cara memasak</h3>
+                  <ol>
+                    {activeMethodRecipe.steps.map((step, index) => (
+                      <li key={`${activeMethodRecipe.id}-step-${index}`}><span aria-hidden="true">{index + 1}</span><p>{step}</p></li>
+                    ))}
+                  </ol>
+                </section>
+              </div>
+
+              <div className="method-dialog-footer">
+                <Button type="button" onClick={() => loadRecipePreset(activeMethodRecipe)}>Guna dalam kalkulator</Button>
+                <a href={activeMethodRecipe.sourceUrl} target="_blank" rel="noreferrer">
+                  Lihat sumber asal <ExternalLink aria-hidden="true" />
+                </a>
+              </div>
+            </DialogContent>
+          )}
+        </Dialog>
 
         <footer className="site-footer"><span>Cal-Cook-Lator</span><p>Sukatan yang lebih mudah. Majlis yang lebih tenang.</p></footer>
       </div>

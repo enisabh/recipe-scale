@@ -31,10 +31,12 @@ import {
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
+import easyCakeRecipes from '@/lib/easy-cake-recipes.json';
 import khairulAmingRecipes from '@/lib/khairul-aming-recipes.json';
 import { formatRecipeForCopy, normalizeRecipeText, scaleRecipe } from '@/lib/recipe';
 
-type RecipePreset = (typeof khairulAmingRecipes)[number];
+const recipePresets = [...easyCakeRecipes, ...khairulAmingRecipes];
+type RecipePreset = (typeof recipePresets)[number];
 
 const DEFAULT_RECIPE = `Nasi Goreng Kampung
 
@@ -54,13 +56,14 @@ const ingredientEmoji: Record<string, string> = {
 const categoryEmoji: Record<string, string> = {
   Ayam: '🍗', Daging: '🥩', Ikan: '🐟', Seafood: '🦐',
   'Nasi, Pulut & Bubur': '🍚', 'Pasta & Pizza': '🍝',
+  'Kek, Roti & Pastri': '🍰',
   'Pencuci Mulut': '🍮', Snack: '🥨',
   'Sambal, Sos & Pencicah': '🌶️', Sup: '🍲',
 };
 
 const recipeCategories = [
   'Semua',
-  ...Array.from(new Set(khairulAmingRecipes.map((recipe) => recipe.category))),
+  ...Array.from(new Set(recipePresets.map((recipe) => recipe.category))),
 ];
 
 function getEmoji(name: string) {
@@ -97,7 +100,7 @@ export default function Home() {
 
   const filteredRecipes = useMemo(() => {
     const query = recipeSearch.trim().toLowerCase();
-    return khairulAmingRecipes.filter((recipe) => {
+    return recipePresets.filter((recipe) => {
       const matchesCategory = recipeCategory === 'Semua' || recipe.category === recipeCategory;
       const matchesSearch = !query
         || recipe.name.toLowerCase().includes(query)
@@ -282,8 +285,8 @@ export default function Home() {
         <section className="recipe-library" aria-labelledby="koleksi-resipi-title">
           <div className="library-heading">
             <div>
-              <span className="library-kicker">20 RESIPI PILIHAN</span>
-              <h2 id="koleksi-resipi-title">Koleksi Resipi Khairul Aming</h2>
+              <span className="library-kicker">{recipePresets.length} RESIPI PILIHAN</span>
+              <h2 id="koleksi-resipi-title">Koleksi Resipi Pilihan</h2>
               <p>Cari resipi, pilih satu dan bahan akan terus masuk ke kalkulator dengan hidangan asal.</p>
             </div>
             <span className="library-count">{filteredRecipes.length} resipi</span>
@@ -360,7 +363,7 @@ export default function Home() {
           )}
 
           <p className="library-source-note">
-            Data bahan, hidangan dan ringkasan cara memasak dirujuk daripada ResipiKita. Gunakan pautan sumber pada setiap kad untuk melihat penerbitan asal. Cal-Cook-Lator bukan laman rasmi atau berafiliasi dengan Khairul Aming.
+            Data bahan, hidangan dan ringkasan cara memasak dirujuk daripada sumber yang dipautkan pada setiap kad. Cal-Cook-Lator bukan laman rasmi atau berafiliasi dengan penerbit resipi tersebut.
           </p>
         </section>
 

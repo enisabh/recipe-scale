@@ -79,3 +79,24 @@ void test('includes 20 sourced Khairul Aming recipe presets', () => {
     assert.equal(parsed.items.length, recipe.ingredients.length, recipe.name);
   });
 });
+
+void test('includes 6 complete easy cake presets', () => {
+  const recipes = JSON.parse(
+    readFileSync(new URL('./easy-cake-recipes.json', import.meta.url), 'utf8'),
+  ) as Array<{
+    name: string;
+    servings: number;
+    ingredients: string[];
+    steps: string[];
+    sourceUrl: string;
+  }>;
+  assert.equal(recipes.length, 6);
+  assert.ok(recipes.some((recipe) => recipe.name === 'Burnt Basque Cheesecake'));
+  assert.ok(recipes.every((recipe) => recipe.ingredients.length >= 5));
+  assert.ok(recipes.every((recipe) => recipe.steps.length >= 5));
+  assert.ok(recipes.every((recipe) => recipe.sourceUrl.startsWith('https://')));
+  recipes.forEach((recipe) => {
+    const parsed = scaleRecipe([recipe.name, ...recipe.ingredients].join('\n'), recipe.servings, recipe.servings);
+    assert.equal(parsed.items.length, recipe.ingredients.length, recipe.name);
+  });
+});

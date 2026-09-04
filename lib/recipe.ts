@@ -182,7 +182,12 @@ export function scaleRecipe(text: string, originalServings: number, targetServin
   return { title, factor, factorLabel: `${formatNumber(factor)}×`, servings: safeTarget, items };
 }
 
-export function formatRecipeForCopy(recipe: ScaledRecipe) {
+export function scaleRecipeByFactor(text: string, factor: number, referenceServings = 1) {
+  const safeFactor = Number.isFinite(factor) ? Math.max(0.01, factor) : 1;
+  return scaleRecipe(text, referenceServings, referenceServings * safeFactor);
+}
+
+export function formatRecipeForCopy(recipe: ScaledRecipe, contextLabel?: string) {
   const ingredients = recipe.items.map((item) => `• ${item.name}: ${item.displayAmount}`).join('\n');
-  return `${recipe.title}\nUntuk ${recipe.servings} orang\n\n${ingredients}`;
+  return `${recipe.title}\n${contextLabel ?? `Untuk ${recipe.servings} orang`}\n\n${ingredients}`;
 }

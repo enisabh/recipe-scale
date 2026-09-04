@@ -1,7 +1,8 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import test from 'node:test';
-import { formatRecipeForCopy, normalizeRecipeText, scaleRecipe } from './recipe.ts';
+import { getPanScaleFactor } from './pan.ts';
+import { formatRecipeForCopy, normalizeRecipeText, scaleRecipe, scaleRecipeByFactor } from './recipe.ts';
 
 void test('scales the reference recipe from 3 to 100 servings', () => {
   const recipe = scaleRecipe('Nasi Goreng Kampung\n3 cawan nasi\n200g ayam\n2 biji telur\nSedikit garam', 3, 100);
@@ -26,6 +27,33 @@ void test('understands fractions and converts litres to millilitres', () => {
 void test('creates a copy-friendly recipe', () => {
   const recipe = scaleRecipe('Teh\n2 cawan air', 2, 4);
   assert.equal(formatRecipeForCopy(recipe), 'Teh\nUntuk 4 orang\n\n• Air: 4 cawan');
+});
+
+void test('scales a round 9-inch cake recipe down to a 7-inch pan', () => {
+  const factor = getPanScaleFactor(
+    { shape: 'round', width: 9 },
+    { shape: 'round', width: 7 },
+  );
+  assert.equal(factor.toFixed(4), '0.6049');
+
+  const recipe = scaleRecipeByFactor('Kek\n500 g krim keju\n200 g gula\n5 biji telur', factor, 12);
+  assert.deepEqual(recipe.items, [
+    { name: 'Krim Keju', displayAmount: '302.5 g' },
+    { name: 'Gula', displayAmount: '121 g' },
+    { name: 'Telur', displayAmount: '3 biji' },
+  ]);
+  assert.equal(
+    formatRecipeForCopy(recipe, 'Untuk loyang bulat Ø 7 inci').split('\n')[1],
+    'Untuk loyang bulat Ø 7 inci',
+  );
+});
+
+void test('compares rectangular and square pan areas', () => {
+  const factor = getPanScaleFactor(
+    { shape: 'rectangle', width: 9, length: 13 },
+    { shape: 'square', width: 8 },
+  );
+  assert.equal(factor.toFixed(4), '0.5470');
 });
 
 void test('detects ingredients pasted from Google without line breaks', () => {

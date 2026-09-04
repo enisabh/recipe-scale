@@ -14,6 +14,7 @@ import {
   Minus,
   Plus,
   Printer,
+  Ruler,
   RotateCcw,
   Search,
   Sparkles,
@@ -33,7 +34,8 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import easyCakeRecipes from '@/lib/easy-cake-recipes.json';
 import khairulAmingRecipes from '@/lib/khairul-aming-recipes.json';
-import { formatRecipeForCopy, normalizeRecipeText, scaleRecipe } from '@/lib/recipe';
+import { getPanScaleFactor, type PanShape } from '@/lib/pan';
+import { formatRecipeForCopy, normalizeRecipeText, scaleRecipe, scaleRecipeByFactor } from '@/lib/recipe';
 
 const recipePresets = [...easyCakeRecipes, ...khairulAmingRecipes];
 type RecipePreset = (typeof recipePresets)[number];
@@ -82,7 +84,63 @@ function StepHeading({ number, children }: { number: number; children: React.Rea
   );
 }
 
+const panShapeLabels: Record<PanShape, string> = {
+  round: 'Bulat',
+  square: 'Segi empat',
+  rectangle: 'Segi empat tepat',
+};
+
+function clampPanSize(value: number) {
+  return Math.min(100, Math.max(0.1, value || 0.1));
+}
+
+function formatPanSize(shape: PanShape, width: number, length: number, unit: string) {
+  if (shape === 'round') return `bulat Ø ${width} ${unit}`;
+  if (shape === 'square') return `segi empat ${width} × ${width} ${unit}`;
+  return `segi empat tepat ${width} × ${length} ${unit}`;
+}
+
+function PanSizeControl({
+  title, shape, width, length, unit, onShapeChange, onWidthChange, onLengthChange,
+}: {
+  title: string;
+  shape: PanShape;
+  width: number;
+  length: number;
+  unit: string;
+  onShapeChange: (shape: PanShape) => void;
+  onWidthChange: (value: number) => void;
+  onLengthChange: (value: number) => void;
+}) {
+  const primaryLabel = shape === 'round' ? 'Diameter' : shape === 'square' ? 'Sisi' : 'Panjang';
+  const controlId = title === 'Loyang resipi asal' ? 'original-pan' : 'target-pan';
+  return (
+    <fieldset className="pan-size-card">
+      <legend>{title}</legend>
+      <label className="pan-shape-field" htmlFor={`${controlId}-shape`}>
+        <span>Bentuk</span>
+        <select id={`${controlId}-shape`} value={shape} onChange={(event) => onShapeChange(event.target.value as PanShape)}>
+          {Object.entries(panShapeLabels).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
+        </select>
+      </label>
+      <div className={`pan-dimensions ${shape === 'rectangle' ? 'two-dimensions' : ''}`}>
+        <label htmlFor={`${controlId}-width`}>
+          <span>{primaryLabel}</span>
+          <div><Input id={`${controlId}-width`} type="number" min={0.1} max={100} step={0.1} value={width} onChange={(event) => onWidthChange(clampPanSize(Number(event.target.value)))} /><em>{unit}</em></div>
+        </label>
+        {shape === 'rectangle' && (
+          <label htmlFor={`${controlId}-length`}>
+            <span>Lebar</span>
+            <div><Input id={`${controlId}-length`} type="number" min={0.1} max={100} step={0.1} value={length} onChange={(event) => onLengthChange(clampPanSize(Number(event.target.value)))} /><em>{unit}</em></div>
+          </label>
+        )}
+      </div>
+    </fieldset>
+  );
+}
+
 export default function Home() {
+  const [scaleMode, setScaleMode] = useState<'servings' | 'pan'>('servings');
   const [recipeText, setRecipeText] = useState(DEFAULT_RECIPE);
   const [originalServings, setOriginalServings] = useState(3);
   const [targetServings, setTargetServings] = useState(100);
@@ -92,11 +150,37 @@ export default function Home() {
   const [recipeCategory, setRecipeCategory] = useState('Semua');
   const [selectedRecipeId, setSelectedRecipeId] = useState<number | null>(null);
   const [activeMethodRecipe, setActiveMethodRecipe] = useState<RecipePreset | null>(null);
+  const [panUnit, setPanUnit] = useState<'inci' | 'cm'>('inci');
+  const [originalPanShape, setOriginalPanShape] = useState<PanShape>('round');
+  const [originalPanWidth, setOriginalPanWidth] = useState(9);
+  const [originalPanLength, setOriginalPanLength] = useState(9);
+  const [targetPanShape, setTargetPanShape] = useState<PanShape>('round');
+  const [targetPanWidth, setTargetPanWidth] = useState(7);
+  const [targetPanLength, setTargetPanLength] = useState(7);
+
+  const panFactor = useMemo(
+    () => getPanScaleFactor(
+      { shape: originalPanShape, width: originalPanWidth, length: originalPanLength },
+      { shape: targetPanShape, width: targetPanWidth, length: targetPanLength },
+    ),
+    [originalPanLength, originalPanShape, originalPanWidth, targetPanLength, targetPanShape, targetPanWidth],
+  );
 
   const scaledRecipe = useMemo(
-    () => scaleRecipe(recipeText, originalServings, targetServings),
-    [recipeText, originalServings, targetServings],
+    () => scaleMode === 'pan'
+      ? scaleRecipeByFactor(recipeText, panFactor, originalServings)
+      : scaleRecipe(recipeText, originalServings, targetServings),
+    [originalServings, panFactor, recipeText, scaleMode, targetServings],
   );
+
+  const targetPanLabel = formatPanSize(targetPanShape, targetPanWidth, targetPanLength, panUnit);
+  const panPercent = Math.round(panFactor * 1000) / 10;
+  const panDifference = Math.round(Math.abs(panFactor - 1) * 1000) / 10;
+  const panAdjustment = panFactor < 0.995
+    ? `Kurangkan adunan ${panDifference}%`
+    : panFactor > 1.005
+      ? `Tambah adunan ${panDifference}%`
+      : 'Kapasiti loyang hampir sama';
 
   const filteredRecipes = useMemo(() => {
     const query = recipeSearch.trim().toLowerCase();
@@ -143,7 +227,8 @@ export default function Home() {
 
   const handleCopy = async () => {
     try {
-      await navigator.clipboard.writeText(formatRecipeForCopy(scaledRecipe));
+      const copyContext = scaleMode === 'pan' ? `Untuk loyang ${targetPanLabel}` : undefined;
+      await navigator.clipboard.writeText(formatRecipeForCopy(scaledRecipe, copyContext));
       showToast('Resipi berjaya disalin');
     } catch {
       showToast('Tidak dapat menyalin resipi');
@@ -151,9 +236,17 @@ export default function Home() {
   };
 
   const handleReset = () => {
+    setScaleMode('servings');
     setRecipeText(DEFAULT_RECIPE);
     setOriginalServings(3);
     setTargetServings(100);
+    setPanUnit('inci');
+    setOriginalPanShape('round');
+    setOriginalPanWidth(9);
+    setOriginalPanLength(9);
+    setTargetPanShape('round');
+    setTargetPanWidth(7);
+    setTargetPanLength(7);
     setSelectedRecipeId(null);
     showToast('Resipi telah ditetapkan semula');
   };
@@ -176,8 +269,8 @@ export default function Home() {
       <div className="mx-auto max-w-[1180px]">
         <div className="intro-copy">
           <span className="eyebrow">PASTE • SKALA • SIAP</span>
-          <h1>Masak untuk 5 orang atau 500 orang.</h1>
-          <p>Tampal resipi, pilih jumlah tetamu dan biar kami kira selebihnya.</p>
+          <h1>Masak ikut jumlah tetamu atau saiz loyang.</h1>
+          <p>Tampal resipi, pilih jumlah orang atau tukar saiz loyang dan biar kami kira selebihnya.</p>
         </div>
 
         <section id="kalkulator-resipi" className="recipe-shell" aria-label="Kalkulator skala resipi">
@@ -201,8 +294,8 @@ export default function Home() {
                   </DialogHeader>
                   <ol className="help-list">
                     <li><span>1</span><p><strong>Tampal resipi.</strong> Letakkan satu bahan pada setiap baris.</p></li>
-                    <li><span>2</span><p><strong>Isi jumlah asal.</strong> Beritahu berapa orang resipi asal boleh hidang.</p></li>
-                    <li><span>3</span><p><strong>Pilih sasaran.</strong> Kami gandakan bahan dan menukar g kepada kg atau ml kepada L apabila sesuai.</p></li>
+                    <li><span>2</span><p><strong>Pilih cara kira.</strong> Gunakan jumlah orang atau tukar saiz loyang bulat, segi empat dan segi empat tepat.</p></li>
+                    <li><span>3</span><p><strong>Masukkan sasaran.</strong> Kami laraskan semua bahan dan menukar g kepada kg atau ml kepada L apabila sesuai.</p></li>
                   </ol>
                 </DialogContent>
               </Dialog>
@@ -221,40 +314,71 @@ export default function Home() {
                 <Clipboard className="input-corner-icon" aria-hidden="true" />
                 <Textarea id="recipe-input" value={recipeText} onChange={(e) => setRecipeText(e.target.value)} onPaste={handleRecipePaste} className="recipe-textarea" spellCheck="false" />
               </div>
-              <div className="serving-row">
-                <label htmlFor="original-servings">Resipi ini untuk</label>
-                <div className="serving-input-wrap">
-                  <Input
-                    id="original-servings" type="number" min={1} max={500} value={originalServings}
-                    onChange={(e) => setOriginalServings(Math.min(500, Math.max(1, Number(e.target.value) || 1)))}
-                  />
-                  <span>orang</span>
+              {scaleMode === 'servings' ? (
+                <div className="serving-row">
+                  <label htmlFor="original-servings">Resipi ini untuk</label>
+                  <div className="serving-input-wrap">
+                    <Input
+                      id="original-servings" type="number" min={1} max={500} value={originalServings}
+                      onChange={(e) => setOriginalServings(Math.min(500, Math.max(1, Number(e.target.value) || 1)))}
+                    />
+                    <span>orang</span>
+                  </div>
                 </div>
-              </div>
+              ) : (
+                <div className="pan-input-note"><Ruler aria-hidden="true" /><p>Masukkan saiz loyang resipi asal di langkah 2. Jumlah hidangan tidak digunakan dalam mod loyang.</p></div>
+              )}
             </section>
 
             <div className="flow-arrow flow-arrow-one" aria-hidden="true"><ArrowRight /></div>
 
             <section className="workflow-panel target-panel">
-              <StepHeading number={2}>Nak masak untuk berapa orang?</StepHeading>
-              <div className="target-card">
-                <button className="round-control" type="button" onClick={() => updateTarget(targetServings - 1)} aria-label="Kurangkan seorang"><Minus /></button>
-                <label className="target-display">
-                  <span className="sr-only">Jumlah orang sasaran</span>
-                  <input type="number" min={1} max={500} value={targetServings} onChange={(e) => updateTarget(Number(e.target.value))} />
-                  <span>ORANG</span>
-                </label>
-                <button className="round-control" type="button" onClick={() => updateTarget(targetServings + 1)} aria-label="Tambah seorang"><Plus /></button>
+              <StepHeading number={2}>{scaleMode === 'pan' ? 'Tukar saiz loyang' : 'Nak masak untuk berapa orang?'}</StepHeading>
+              <div className="scale-mode-toggle" aria-label="Pilih cara pengiraan">
+                <button type="button" aria-pressed={scaleMode === 'servings'} className={scaleMode === 'servings' ? 'active' : ''} onClick={() => setScaleMode('servings')}><Users aria-hidden="true" /> Jumlah orang</button>
+                <button type="button" aria-pressed={scaleMode === 'pan'} className={scaleMode === 'pan' ? 'active' : ''} onClick={() => setScaleMode('pan')}><Ruler aria-hidden="true" /> Saiz loyang</button>
               </div>
-              <div className="factor-pill"><Sparkles aria-hidden="true" /> Sukatan didarab {scaledRecipe.factorLabel}</div>
-              <Button className="convert-button" size="lg" onClick={handleConvert}><Sparkles /> Tukar resipi</Button>
-              <p className="range-note">Sesuai untuk 1 hingga 500 orang</p>
+
+              {scaleMode === 'servings' ? (
+                <>
+                  <div className="target-card">
+                    <button className="round-control" type="button" onClick={() => updateTarget(targetServings - 1)} aria-label="Kurangkan seorang"><Minus /></button>
+                    <label className="target-display">
+                      <span className="sr-only">Jumlah orang sasaran</span>
+                      <input type="number" min={1} max={500} value={targetServings} onChange={(e) => updateTarget(Number(e.target.value))} />
+                      <span>ORANG</span>
+                    </label>
+                    <button className="round-control" type="button" onClick={() => updateTarget(targetServings + 1)} aria-label="Tambah seorang"><Plus /></button>
+                  </div>
+                  <div className="factor-pill"><Sparkles aria-hidden="true" /> Sukatan didarab {scaledRecipe.factorLabel}</div>
+                  <p className="range-note">Sesuai untuk 1 hingga 500 orang</p>
+                </>
+              ) : (
+                <>
+                  <div className="pan-unit-toggle" aria-label="Unit ukuran loyang">
+                    <span>Unit</span>
+                    <button type="button" className={panUnit === 'inci' ? 'active' : ''} aria-pressed={panUnit === 'inci'} onClick={() => setPanUnit('inci')}>inci</button>
+                    <button type="button" className={panUnit === 'cm' ? 'active' : ''} aria-pressed={panUnit === 'cm'} onClick={() => setPanUnit('cm')}>cm</button>
+                  </div>
+                  <div className="pan-size-grid">
+                    <PanSizeControl title="Loyang resipi asal" shape={originalPanShape} width={originalPanWidth} length={originalPanLength} unit={panUnit} onShapeChange={setOriginalPanShape} onWidthChange={setOriginalPanWidth} onLengthChange={setOriginalPanLength} />
+                    <PanSizeControl title="Loyang yang anda ada" shape={targetPanShape} width={targetPanWidth} length={targetPanLength} unit={panUnit} onShapeChange={setTargetPanShape} onWidthChange={setTargetPanWidth} onLengthChange={setTargetPanLength} />
+                  </div>
+                  <div className="pan-result-summary" aria-live="polite">
+                    <strong>{panPercent}%</strong>
+                    <div><span>daripada adunan asal</span><p>{panAdjustment}</p></div>
+                  </div>
+                  <p className="pan-bake-note">Kekalkan suhu ketuhar dan mula periksa 5–10 minit lebih awal. Kiraan menganggap ketinggian loyang adalah sama.</p>
+                </>
+              )}
+
+              <Button className="convert-button" size="lg" onClick={handleConvert}><Sparkles /> Tukar sukatan</Button>
             </section>
 
             <div className="flow-arrow flow-arrow-two" aria-hidden="true"><ArrowRight /></div>
 
             <section id="hasil-resipi" className={`workflow-panel result-panel ${pulse ? 'result-pulse' : ''}`}>
-              <StepHeading number={3}>Resipi baharu — {targetServings} orang</StepHeading>
+              <StepHeading number={3}>Resipi baharu — {scaleMode === 'pan' ? targetPanLabel : `${targetServings} orang`}</StepHeading>
               <div className="result-card" aria-live="polite">
                 <div className="result-title-row">
                   <div><span>HASIL SKALA</span><h3>{scaledRecipe.title}</h3></div>
